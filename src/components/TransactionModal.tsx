@@ -17,9 +17,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { useFinance, Transaction, TransactionType } from '@/contexts/FinanceContext'
 import { formatCurrency, parseCurrencyInput } from '@/lib/format'
 import { cn } from '@/lib/utils'
+import { addMonths } from 'date-fns'
 
 interface TransactionModalProps {
   isOpen: boolean
@@ -37,12 +39,15 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
   onClose,
   transactionToEdit,
 }) => {
-  const { addTransaction, editTransaction } = useFinance()
+  const { addTransaction, addTransactions, editTransaction } = useFinance()
   const [type, setType] = useState<TransactionType>('expense')
   const [description, setDescription] = useState('')
   const [amountInput, setAmountInput] = useState('')
   const [date, setDate] = useState(new Date().toISOString().split('T')[0])
   const [category, setCategory] = useState('')
+
+  const [entryMode, setEntryMode] = useState<'single' | 'recurrent' | 'installment'>('single')
+  const [installments, setInstallments] = useState('2')
 
   useEffect(() => {
     if (isOpen) {
@@ -52,12 +57,15 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
         setAmountInput(formatCurrency(transactionToEdit.amount))
         setDate(transactionToEdit.date.split('T')[0])
         setCategory(transactionToEdit.category)
+        setEntryMode('single') // Prevent complex recurrence updates on edit
       } else {
         setType('expense')
         setDescription('')
         setAmountInput('')
         setDate(new Date().toISOString().split('T')[0])
         setCategory('')
+        setEntryMode('single')
+        setInstallments('2')
       }
     }
   }, [isOpen, transactionToEdit])
@@ -72,12 +80,53 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
     const amount = parseCurrencyInput(amountInput)
     if (!description || amount <= 0 || !category) return
 
-    const data = { type, description, amount, date: new Date(date).toISOString(), category }
-
     if (transactionToEdit) {
-      editTransaction({ ...data, id: transactionToEdit.id })
+      editTransaction({
+        ...transactionToEdit,
+        type,
+        description,
+        amount,
+        date: new Date(date + 'T12:00:00').toISOString(),
+        category,
+      })
     } else {
-      addTransaction(data)
+      if (entryMode === 'installment') {
+        const totalInst = parseInt(installments, 10) || 1
+        if (totalInst > 1) {
+          const amountPerInst = amount / totalInst
+          const baseDate = new Date(date + 'T12:00:00')
+
+          const newTxs = Array.from({ length: totalInst }).map((_, i) => {
+            const txDate = addMonths(baseDate, i)
+            return {
+              type,
+              description,
+              amount: amountPerInst,
+              date: txDate.toISOString(),
+              category,
+              installment: { current: i + 1, total: totalInst },
+            }
+          })
+          addTransactions(newTxs)
+        } else {
+          addTransaction({
+            type,
+            description,
+            amount,
+            date: new Date(date + 'T12:00:00').toISOString(),
+            category,
+          })
+        }
+      } else {
+        addTransaction({
+          type,
+          description,
+          amount,
+          date: new Date(date + 'T12:00:00').toISOString(),
+          category,
+          isRecurrent: entryMode === 'recurrent',
+        })
+      }
     }
     onClose()
   }
@@ -127,6 +176,36 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
             </button>
           </div>
 
+          {!transactionToEdit && (
+            <div className="grid gap-3 pt-2">
+              <Label>Tipo de Lançamento</Label>
+              <RadioGroup
+                value={entryMode}
+                onValueChange={(v) => setEntryMode(v as any)}
+                className="flex items-center gap-4"
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="single" id="r1" />
+                  <Label htmlFor="r1" className="cursor-pointer font-normal">
+                    Única
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="recurrent" id="r2" />
+                  <Label htmlFor="r2" className="cursor-pointer font-normal">
+                    Recorrente
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="installment" id="r3" />
+                  <Label htmlFor="r3" className="cursor-pointer font-normal">
+                    Parcelada
+                  </Label>
+                </div>
+              </RadioGroup>
+            </div>
+          )}
+
           <div className="grid gap-2">
             <Label htmlFor="description">Descrição</Label>
             <Input
@@ -139,7 +218,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="amount">Valor</Label>
+            <Label htmlFor="amount">Valor {entryMode === 'installment' && 'Total'}</Label>
             <Input
               id="amount"
               value={amountInput}
@@ -147,7 +226,27 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
               placeholder="R$ 0,00"
               required
             />
+            {entryMode === 'installment' && !transactionToEdit && (
+              <p className="text-xs text-muted-foreground -mt-1">
+                O valor total será dividido igualmente pelas parcelas.
+              </p>
+            )}
           </div>
+
+          {entryMode === 'installment' && !transactionToEdit && (
+            <div className="grid gap-2 animate-fade-in-up">
+              <Label htmlFor="installments">Quantidade de Parcelas</Label>
+              <Input
+                id="installments"
+                type="number"
+                min="2"
+                max="72"
+                value={installments}
+                onChange={(e) => setInstallments(e.target.value)}
+                required
+              />
+            </div>
+          )}
 
           <div className="grid gap-2">
             <Label htmlFor="date">Data</Label>

@@ -2,13 +2,21 @@ import { useFinance } from '@/contexts/FinanceContext'
 import { formatCurrency, formatDate } from '@/lib/format'
 import { useNumberTicker } from '@/hooks/useNumberTicker'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { ArrowDownCircle, ArrowUpCircle, Wallet, AlertCircle, CheckCircle2 } from 'lucide-react'
+import {
+  ArrowDownCircle,
+  ArrowUpCircle,
+  Wallet,
+  AlertCircle,
+  CheckCircle2,
+  Repeat,
+  CreditCard,
+} from 'lucide-react'
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
 import { PieChart, Pie, Cell, RadialBarChart, RadialBar, PolarAngleAxis } from 'recharts'
 import { cn } from '@/lib/utils'
 
 export default function Index() {
-  const { totalIncome, totalExpense, balance, transactions } = useFinance()
+  const { totalIncome, totalExpense, balance, currentMonthTransactions } = useFinance()
 
   const animatedIncome = useNumberTicker(totalIncome)
   const animatedExpense = useNumberTicker(totalExpense)
@@ -18,10 +26,12 @@ export default function Index() {
   const spentPercentage = totalIncome > 0 ? Math.min((totalExpense / totalIncome) * 100, 100) : 0
   const statusColor = isPositive ? 'var(--success)' : 'var(--destructive)'
 
-  const recentTransactions = transactions.slice(0, 5)
+  const recentTransactions = [...currentMonthTransactions]
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    .slice(0, 5)
 
-  // Aggregate for Pie Chart
-  const expensesByCategory = transactions
+  // Aggregate for Pie Chart using current month projected transactions
+  const expensesByCategory = currentMonthTransactions
     .filter((t) => t.type === 'expense')
     .reduce(
       (acc, curr) => {
@@ -157,7 +167,7 @@ export default function Index() {
             </div>
           ) : (
             <div className="h-[200px] flex items-center justify-center text-muted-foreground text-sm">
-              Nenhuma despesa registrada.
+              Nenhuma despesa registrada no mês.
             </div>
           )}
         </Card>
@@ -185,15 +195,25 @@ export default function Index() {
                       )}
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-slate-800 leading-none">
-                        {tx.description}
-                      </p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-medium text-slate-800 leading-none truncate max-w-[120px] sm:max-w-xs">
+                          {tx.description}
+                        </p>
+                        {tx.isRecurrent && (
+                          <Repeat className="w-3 h-3 text-purple-600" aria-label="Recorrente" />
+                        )}
+                        {tx.installment && (
+                          <span className="text-[10px] font-medium text-blue-700 bg-blue-50 px-1 py-0.5 rounded-sm border border-blue-100 leading-none">
+                            {tx.installment.current}/{tx.installment.total}
+                          </span>
+                        )}
+                      </div>
                       <p className="text-xs text-muted-foreground mt-1">{formatDate(tx.date)}</p>
                     </div>
                   </div>
                   <span
                     className={cn(
-                      'text-sm font-semibold tabular-nums',
+                      'text-sm font-semibold tabular-nums shrink-0 ml-2',
                       tx.type === 'income' ? 'text-success' : 'text-destructive',
                     )}
                   >

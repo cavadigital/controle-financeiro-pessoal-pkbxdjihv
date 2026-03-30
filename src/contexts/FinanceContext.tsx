@@ -9,11 +9,18 @@ export interface Transaction {
   amount: number
   date: string
   category: string
+  isRecurrent?: boolean
+  installment?: {
+    current: number
+    total: number
+  }
 }
 
 interface FinanceContextData {
   transactions: Transaction[]
+  currentMonthTransactions: Transaction[]
   addTransaction: (t: Omit<Transaction, 'id'>) => void
+  addTransactions: (ts: Omit<Transaction, 'id'>[]) => void
   editTransaction: (t: Transaction) => void
   deleteTransaction: (id: string) => void
   totalIncome: number
@@ -31,6 +38,7 @@ const MOCK_DATA: Transaction[] = [
     amount: 5000,
     date: new Date().toISOString(),
     category: 'Salário',
+    isRecurrent: true,
   },
   {
     id: '2',
@@ -39,6 +47,7 @@ const MOCK_DATA: Transaction[] = [
     amount: 1500,
     date: new Date().toISOString(),
     category: 'Moradia',
+    isRecurrent: true,
   },
   {
     id: '3',
@@ -47,6 +56,18 @@ const MOCK_DATA: Transaction[] = [
     amount: 800,
     date: new Date().toISOString(),
     category: 'Alimentação',
+  },
+  {
+    id: '4',
+    type: 'expense',
+    description: 'Notebook em 10x',
+    amount: 350,
+    date: new Date().toISOString(),
+    category: 'Outros',
+    installment: {
+      current: 1,
+      total: 10,
+    },
   },
 ]
 
@@ -67,7 +88,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     if (transactions.length > 0) {
       localStorage.setItem('@meusaldo:transactions', JSON.stringify(transactions))
     } else {
-      localStorage.removeItem('@meusaldo:transactions') // clear if empty to show empty states correctly if needed, though saving empty array is fine too.
+      localStorage.removeItem('@meusaldo:transactions')
       localStorage.setItem('@meusaldo:transactions', JSON.stringify([]))
     }
   }, [transactions])
@@ -79,6 +100,13 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     )
   }
 
+  const addTransactions = (ts: Omit<Transaction, 'id'>[]) => {
+    const newTxs = ts.map((t) => ({ ...t, id: crypto.randomUUID() }))
+    setTransactions((prev) =>
+      [...newTxs, ...prev].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
+    )
+  }
+
   const editTransaction = (t: Transaction) => {
     setTransactions((prev) => prev.map((tx) => (tx.id === t.id ? t : tx)))
   }
@@ -87,10 +115,35 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setTransactions((prev) => prev.filter((tx) => tx.id !== id))
   }
 
-  const currentMonthTransactions = transactions.filter((t) => {
+  const currentMonthTransactions = transactions.flatMap((t) => {
     const txDate = new Date(t.date)
     const now = new Date()
-    return txDate.getMonth() === now.getMonth() && txDate.getFullYear() === now.getFullYear()
+    const isThisMonth =
+      txDate.getMonth() === now.getMonth() && txDate.getFullYear() === now.getFullYear()
+
+    if (isThisMonth) return [t]
+
+    if (t.isRecurrent) {
+      const txMonthValue = txDate.getFullYear() * 12 + txDate.getMonth()
+      const nowMonthValue = now.getFullYear() * 12 + now.getMonth()
+      if (txMonthValue < nowMonthValue) {
+        return [
+          {
+            ...t,
+            id: `${t.id}-virtual-${nowMonthValue}`,
+            date: new Date(
+              now.getFullYear(),
+              now.getMonth(),
+              txDate.getDate(),
+              12,
+              0,
+              0,
+            ).toISOString(),
+          },
+        ]
+      }
+    }
+    return []
   })
 
   const totalIncome = currentMonthTransactions
@@ -105,7 +158,9 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     <FinanceContext.Provider
       value={{
         transactions,
+        currentMonthTransactions,
         addTransaction,
+        addTransactions,
         editTransaction,
         deleteTransaction,
         totalIncome,

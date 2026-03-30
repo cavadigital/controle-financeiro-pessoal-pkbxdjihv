@@ -4,10 +4,19 @@ import { formatCurrency, formatDate } from '@/lib/format'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { Search, ArrowUpCircle, ArrowDownCircle, Pencil, Trash2 } from 'lucide-react'
+import {
+  Search,
+  ArrowUpCircle,
+  ArrowDownCircle,
+  Pencil,
+  Trash2,
+  Repeat,
+  CreditCard,
+} from 'lucide-react'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { useToast } from '@/hooks/use-toast'
 import { TransactionModal } from '@/components/TransactionModal'
+import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 
 export default function Transactions() {
@@ -110,11 +119,39 @@ export default function Transactions() {
                   )}
                 </div>
                 <div>
-                  <h4 className="font-semibold text-slate-800">{tx.description}</h4>
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+                  <h4 className="font-semibold text-slate-800 flex items-center gap-2">
+                    {tx.description}
+                  </h4>
+                  <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground mt-1">
                     <span className="bg-muted px-2 py-0.5 rounded-full">{tx.category}</span>
                     <span>•</span>
                     <span>{formatDate(tx.date)}</span>
+
+                    {tx.isRecurrent && (
+                      <>
+                        <span>•</span>
+                        <Badge
+                          variant="secondary"
+                          className="bg-purple-100 text-purple-700 hover:bg-purple-100 border-none px-1.5 py-0 h-5 text-[10px] flex items-center gap-1 font-medium"
+                        >
+                          <Repeat className="w-3 h-3" />
+                          Recorrente
+                        </Badge>
+                      </>
+                    )}
+
+                    {tx.installment && (
+                      <>
+                        <span>•</span>
+                        <Badge
+                          variant="outline"
+                          className="bg-blue-50 text-blue-700 hover:bg-blue-50 border-blue-200 px-1.5 py-0 h-5 text-[10px] flex items-center gap-1 font-medium"
+                        >
+                          <CreditCard className="w-3 h-3" />
+                          {tx.installment.current}/{tx.installment.total}
+                        </Badge>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
