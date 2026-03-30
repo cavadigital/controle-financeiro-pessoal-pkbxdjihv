@@ -7,6 +7,7 @@ import Transactions from './pages/Transactions'
 import Login from './pages/Login'
 import Register from './pages/Register'
 import NotFound from './pages/NotFound'
+import AdminUsers from './pages/AdminUsers'
 import Layout from './components/Layout'
 import { FinanceProvider } from './contexts/FinanceContext'
 import { AuthProvider } from './contexts/AuthContext'
@@ -22,6 +23,7 @@ const App = () => (
             <Route element={<Layout />}>
               <Route path="/" element={<Index />} />
               <Route path="/transacoes" element={<Transactions />} />
+              <Route path="/admin/users" element={<AdminUsers />} />
             </Route>
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />

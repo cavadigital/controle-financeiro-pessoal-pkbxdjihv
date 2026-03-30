@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { Outlet, Link, useLocation, Navigate } from 'react-router-dom'
-import { LayoutDashboard, ListOrdered, Plus, LogOut } from 'lucide-react'
+import { LayoutDashboard, ListOrdered, Plus, LogOut, Users, Clock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { TransactionModal } from './TransactionModal'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/contexts/AuthContext'
+import { Card, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card'
 
 export default function Layout() {
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -14,12 +15,37 @@ export default function Layout() {
   if (isLoading) return null
   if (!user) return <Navigate to="/login" replace />
 
+  if (user.status === 'pending') {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-slate-50 p-4">
+        <Card className="w-full max-w-md text-center border-none shadow-soft animate-fade-in-up">
+          <CardHeader className="space-y-4">
+            <div className="w-16 h-16 bg-yellow-100 text-yellow-600 rounded-full flex items-center justify-center mx-auto">
+              <Clock className="w-8 h-8" />
+            </div>
+            <CardTitle className="text-2xl">Aguardando Aprovação</CardTitle>
+            <CardDescription className="text-base">
+              Sua conta está pendente de aprovação pelo administrador. Você terá acesso ao sistema
+              assim que for aprovado.
+            </CardDescription>
+          </CardHeader>
+          <CardFooter className="justify-center pt-4">
+            <Button variant="outline" onClick={logout}>
+              Sair da conta
+            </Button>
+          </CardFooter>
+        </Card>
+      </div>
+    )
+  }
+
   const currentMonthName = new Date().toLocaleString('pt-BR', { month: 'long', year: 'numeric' })
   const capitalizedMonth = currentMonthName.charAt(0).toUpperCase() + currentMonthName.slice(1)
 
   const navItems = [
     { name: 'Dashboard', path: '/', icon: LayoutDashboard },
     { name: 'Transações', path: '/transacoes', icon: ListOrdered },
+    ...(user.role === 'admin' ? [{ name: 'Usuários', path: '/admin/users', icon: Users }] : []),
   ]
 
   const userInitial = user.name ? user.name.charAt(0).toUpperCase() : 'U'

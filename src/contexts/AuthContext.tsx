@@ -6,6 +6,8 @@ export type User = {
   id: string
   name: string
   email: string
+  role: 'admin' | 'user'
+  status: 'approved' | 'pending'
 }
 
 type AuthContextType = {
@@ -29,7 +31,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (session) {
       try {
         const u = JSON.parse(session)
-        setUser(u)
+        const usersStr = localStorage.getItem('mock_users')
+        const users = usersStr ? JSON.parse(usersStr) : []
+        const latestUser = users.find((user: any) => user.id === u.id)
+
+        if (latestUser) {
+          const refreshedU = {
+            id: latestUser.id,
+            name: latestUser.name,
+            email: latestUser.email,
+            role: latestUser.role || 'user',
+            status: latestUser.status || 'approved',
+          }
+          setUser(refreshedU)
+          localStorage.setItem('mock_session', JSON.stringify(refreshedU))
+        } else {
+          setUser(null)
+          localStorage.removeItem('mock_session')
+        }
       } catch (e) {
         console.error('Failed to parse session', e)
       }
@@ -43,7 +62,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const found = users.find((u: any) => u.email === email && u.password === pass)
 
     if (found) {
-      const u = { id: found.id, name: found.name, email: found.email }
+      const u = {
+        id: found.id,
+        name: found.name,
+        email: found.email,
+        role: found.role || 'user',
+        status: found.status || 'approved',
+      }
       setUser(u)
       localStorage.setItem('mock_session', JSON.stringify(u))
       toast({
@@ -63,11 +88,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       throw new Error('E-mail já cadastrado')
     }
 
-    const newUser = { id: Date.now().toString(), name, email, password: pass }
+    const isFirstUser = users.length === 0
+    const newUser = {
+      id: Date.now().toString(),
+      name,
+      email,
+      password: pass,
+      role: isFirstUser ? 'admin' : 'user',
+      status: isFirstUser ? 'approved' : 'pending',
+    }
+
     users.push(newUser)
     localStorage.setItem('mock_users', JSON.stringify(users))
 
-    const u = { id: newUser.id, name: newUser.name, email: newUser.email }
+    const u = {
+      id: newUser.id,
+      name: newUser.name,
+      email: newUser.email,
+      role: newUser.role as 'admin' | 'user',
+      status: newUser.status as 'approved' | 'pending',
+    }
+
     setUser(u)
     localStorage.setItem('mock_session', JSON.stringify(u))
     toast({
