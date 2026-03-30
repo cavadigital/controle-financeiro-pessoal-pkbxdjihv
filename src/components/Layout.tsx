@@ -1,13 +1,18 @@
 import { useState } from 'react'
-import { Outlet, Link, useLocation } from 'react-router-dom'
-import { LayoutDashboard, ListOrdered, Plus } from 'lucide-react'
+import { Outlet, Link, useLocation, Navigate } from 'react-router-dom'
+import { LayoutDashboard, ListOrdered, Plus, LogOut } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { TransactionModal } from './TransactionModal'
 import { cn } from '@/lib/utils'
+import { useAuth } from '@/contexts/AuthContext'
 
 export default function Layout() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const location = useLocation()
+  const { user, logout, isLoading } = useAuth()
+
+  if (isLoading) return null
+  if (!user) return <Navigate to="/login" replace />
 
   const currentMonthName = new Date().toLocaleString('pt-BR', { month: 'long', year: 'numeric' })
   const capitalizedMonth = currentMonthName.charAt(0).toUpperCase() + currentMonthName.slice(1)
@@ -17,15 +22,20 @@ export default function Layout() {
     { name: 'Transações', path: '/transacoes', icon: ListOrdered },
   ]
 
+  const userInitial = user.name ? user.name.charAt(0).toUpperCase() : 'U'
+  const userName = user.name ? user.name.split(' ')[0] : 'Usuário'
+
   return (
     <div className="flex h-screen w-full bg-background overflow-hidden">
       {/* Desktop Sidebar */}
       <aside className="hidden md:flex flex-col w-64 border-r bg-white px-4 py-6">
         <div className="flex items-center gap-2 mb-8 px-2">
           <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-white font-bold text-xl">
-            M
+            {userInitial}
           </div>
-          <span className="text-xl font-bold tracking-tight">MeuSaldo</span>
+          <span className="text-xl font-bold tracking-tight truncate max-w-[150px]">
+            {userName}
+          </span>
         </div>
 
         <nav className="flex-1 space-y-2">
@@ -45,6 +55,16 @@ export default function Layout() {
             </Link>
           ))}
         </nav>
+
+        <div className="mt-auto pt-4 border-t">
+          <button
+            onClick={logout}
+            className="flex w-full items-center gap-3 px-3 py-2.5 rounded-md transition-colors text-sm font-medium text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+          >
+            <LogOut className="w-5 h-5" />
+            Sair
+          </button>
+        </div>
       </aside>
 
       {/* Main Content */}
@@ -57,13 +77,23 @@ export default function Layout() {
             </span>
             <span className="text-sm font-semibold text-foreground">{capitalizedMonth}</span>
           </div>
-          <Button
-            onClick={() => setIsModalOpen(true)}
-            className="rounded-full shadow-sm hover:shadow-md transition-all gap-2"
-          >
-            <Plus className="w-4 h-4" />
-            <span className="hidden sm:inline">Nova Transação</span>
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              onClick={() => setIsModalOpen(true)}
+              className="rounded-full shadow-sm hover:shadow-md transition-all gap-2"
+            >
+              <Plus className="w-4 h-4" />
+              <span className="hidden sm:inline">Nova Transação</span>
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={logout}
+              className="md:hidden text-muted-foreground hover:text-destructive"
+            >
+              <LogOut className="w-5 h-5" />
+            </Button>
+          </div>
         </header>
 
         {/* Scrollable Content */}
