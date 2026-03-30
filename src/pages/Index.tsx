@@ -23,10 +23,37 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { addMonths, startOfMonth, format } from 'date-fns'
+
+const MONTHS_PT = [
+  'jan',
+  'fev',
+  'mar',
+  'abr',
+  'mai',
+  'jun',
+  'jul',
+  'ago',
+  'set',
+  'out',
+  'nov',
+  'dez',
+]
+function getMonthLabel(date: Date) {
+  return `${MONTHS_PT[date.getMonth()]}/${date.getFullYear().toString().slice(-2)}`
+}
 
 export default function Index() {
-  const { totalIncome, totalExpense, balance, currentMonthTransactions, toggleTransactionPaid } =
-    useFinance()
+  const {
+    totalIncome,
+    totalExpense,
+    balance,
+    currentMonthTransactions,
+    toggleTransactionPaid,
+    selectedMonth,
+    setSelectedMonth,
+  } = useFinance()
 
   const animatedIncome = useNumberTicker(totalIncome)
   const animatedExpense = useNumberTicker(totalExpense)
@@ -63,9 +90,34 @@ export default function Index() {
 
   const radialData = [{ name: 'Gastos', value: spentPercentage, fill: `hsl(${statusColor})` }]
 
+  const currentMonthStart = startOfMonth(new Date())
+  const months = Array.from({ length: 10 }).map((_, i) => addMonths(currentMonthStart, i - 3))
+  const selectedMonthKey = format(selectedMonth, 'yyyy-MM')
+
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-bold tracking-tight text-slate-900">Visão Geral</h1>
+    <div className="space-y-6 animate-fade-in-up">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <h1 className="text-2xl font-bold tracking-tight text-slate-900">Visão Geral</h1>
+
+        <Tabs
+          value={selectedMonthKey}
+          onValueChange={(val) => setSelectedMonth(new Date(val + '-01T12:00:00'))}
+          className="w-full sm:w-auto"
+        >
+          <div className="overflow-x-auto pb-2 -mb-2 sm:pb-0 sm:mb-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+            <TabsList className="inline-flex w-max">
+              {months.map((m) => {
+                const mKey = format(m, 'yyyy-MM')
+                return (
+                  <TabsTrigger key={mKey} value={mKey} className="capitalize px-4">
+                    {getMonthLabel(m)}
+                  </TabsTrigger>
+                )
+              })}
+            </TabsList>
+          </div>
+        </Tabs>
+      </div>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -188,7 +240,7 @@ export default function Index() {
 
         {/* Recent Transactions */}
         <Card className="border-none shadow-soft p-6">
-          <h3 className="text-lg font-semibold mb-4 text-slate-800">Transações Recentes</h3>
+          <h3 className="text-lg font-semibold mb-4 text-slate-800">Transações do Mês</h3>
           {recentTransactions.length > 0 ? (
             <div className="space-y-4">
               {recentTransactions.map((tx) => (
@@ -249,7 +301,7 @@ export default function Index() {
       {/* Contas do Mês */}
       <div className="mt-8">
         <Card className="border-none shadow-soft overflow-hidden">
-          <CardHeader className="border-b px-6 py-4">
+          <CardHeader className="border-b px-6 py-4 flex flex-row items-center justify-between">
             <CardTitle className="text-lg font-semibold text-slate-800">Contas do Mês</CardTitle>
           </CardHeader>
           <CardContent className="p-0">

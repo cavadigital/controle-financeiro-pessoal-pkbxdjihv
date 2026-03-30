@@ -29,6 +29,8 @@ interface FinanceContextData {
   totalIncome: number
   totalExpense: number
   balance: number
+  selectedMonth: Date
+  setSelectedMonth: (date: Date) => void
 }
 
 const FinanceContext = createContext<FinanceContextData>({} as FinanceContextData)
@@ -76,6 +78,7 @@ const MOCK_DATA: Transaction[] = [
 
 export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [transactions, setTransactions] = useState<Transaction[]>([])
+  const [selectedMonth, setSelectedMonth] = useState<Date>(new Date())
 
   useEffect(() => {
     const stored = localStorage.getItem('@meusaldo:transactions')
@@ -147,24 +150,24 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const currentMonthTransactions = transactions.flatMap((t) => {
     const txDate = new Date(t.date)
-    const now = new Date()
+    const target = selectedMonth
     const isThisMonth =
-      txDate.getMonth() === now.getMonth() && txDate.getFullYear() === now.getFullYear()
+      txDate.getMonth() === target.getMonth() && txDate.getFullYear() === target.getFullYear()
 
     if (isThisMonth) return [t]
 
     if (t.isRecurrent) {
       const txMonthValue = txDate.getFullYear() * 12 + txDate.getMonth()
-      const nowMonthValue = now.getFullYear() * 12 + now.getMonth()
-      if (txMonthValue < nowMonthValue) {
-        const monthKey = `${now.getFullYear()}-${now.getMonth()}`
+      const targetMonthValue = target.getFullYear() * 12 + target.getMonth()
+      if (txMonthValue < targetMonthValue) {
+        const monthKey = `${target.getFullYear()}-${target.getMonth()}`
         return [
           {
             ...t,
-            id: `${t.id}-virtual-${nowMonthValue}`,
+            id: `${t.id}-virtual-${targetMonthValue}`,
             date: new Date(
-              now.getFullYear(),
-              now.getMonth(),
+              target.getFullYear(),
+              target.getMonth(),
               txDate.getDate(),
               12,
               0,
@@ -199,6 +202,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         totalIncome,
         totalExpense,
         balance,
+        selectedMonth,
+        setSelectedMonth,
       }}
     >
       {children}
