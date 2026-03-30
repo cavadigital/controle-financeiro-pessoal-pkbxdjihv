@@ -14,6 +14,8 @@ export interface Transaction {
     current: number
     total: number
   }
+  isPaid?: boolean
+  paidMonths?: string[]
 }
 
 interface FinanceContextData {
@@ -23,6 +25,7 @@ interface FinanceContextData {
   addTransactions: (ts: Omit<Transaction, 'id'>[]) => void
   editTransaction: (t: Transaction) => void
   deleteTransaction: (id: string) => void
+  toggleTransactionPaid: (id: string, dateStr: string) => void
   totalIncome: number
   totalExpense: number
   balance: number
@@ -115,6 +118,33 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setTransactions((prev) => prev.filter((tx) => tx.id !== id))
   }
 
+  const toggleTransactionPaid = (id: string, dateStr: string) => {
+    setTransactions((prev) =>
+      prev.map((tx) => {
+        const isVirtual = id.includes('-virtual-')
+        const baseId = isVirtual ? id.split('-virtual-')[0] : id
+
+        if (tx.id !== baseId) return tx
+
+        if (isVirtual) {
+          const d = new Date(dateStr)
+          const monthKey = `${d.getFullYear()}-${d.getMonth()}`
+          const paidMonths = tx.paidMonths || []
+          const isCurrentlyPaid = paidMonths.includes(monthKey)
+
+          return {
+            ...tx,
+            paidMonths: isCurrentlyPaid
+              ? paidMonths.filter((m) => m !== monthKey)
+              : [...paidMonths, monthKey],
+          }
+        } else {
+          return { ...tx, isPaid: !tx.isPaid }
+        }
+      }),
+    )
+  }
+
   const currentMonthTransactions = transactions.flatMap((t) => {
     const txDate = new Date(t.date)
     const now = new Date()
@@ -127,6 +157,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const txMonthValue = txDate.getFullYear() * 12 + txDate.getMonth()
       const nowMonthValue = now.getFullYear() * 12 + now.getMonth()
       if (txMonthValue < nowMonthValue) {
+        const monthKey = `${now.getFullYear()}-${now.getMonth()}`
         return [
           {
             ...t,
@@ -139,6 +170,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
               0,
               0,
             ).toISOString(),
+            isPaid: t.paidMonths?.includes(monthKey) || false,
           },
         ]
       }
@@ -163,6 +195,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         addTransactions,
         editTransaction,
         deleteTransaction,
+        toggleTransactionPaid,
         totalIncome,
         totalExpense,
         balance,

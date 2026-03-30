@@ -14,9 +14,19 @@ import {
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
 import { PieChart, Pie, Cell, RadialBarChart, RadialBar, PolarAngleAxis } from 'recharts'
 import { cn } from '@/lib/utils'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { Checkbox } from '@/components/ui/checkbox'
 
 export default function Index() {
-  const { totalIncome, totalExpense, balance, currentMonthTransactions } = useFinance()
+  const { totalIncome, totalExpense, balance, currentMonthTransactions, toggleTransactionPaid } =
+    useFinance()
 
   const animatedIncome = useNumberTicker(totalIncome)
   const animatedExpense = useNumberTicker(totalExpense)
@@ -29,6 +39,10 @@ export default function Index() {
   const recentTransactions = [...currentMonthTransactions]
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
     .slice(0, 5)
+
+  const monthTransactionsSorted = [...currentMonthTransactions].sort(
+    (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
+  )
 
   // Aggregate for Pie Chart using current month projected transactions
   const expensesByCategory = currentMonthTransactions
@@ -229,6 +243,99 @@ export default function Index() {
               <p className="text-xs">Comece adicionando sua primeira entrada!</p>
             </div>
           )}
+        </Card>
+      </div>
+
+      {/* Contas do Mês */}
+      <div className="mt-8">
+        <Card className="border-none shadow-soft overflow-hidden">
+          <CardHeader className="border-b px-6 py-4">
+            <CardTitle className="text-lg font-semibold text-slate-800">Contas do Mês</CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            {monthTransactionsSorted.length > 0 ? (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[50px]"></TableHead>
+                    <TableHead>Descrição</TableHead>
+                    <TableHead className="hidden sm:table-cell">Categoria</TableHead>
+                    <TableHead className="hidden sm:table-cell">Data</TableHead>
+                    <TableHead className="text-right">Valor</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {monthTransactionsSorted.map((tx) => (
+                    <TableRow
+                      key={tx.id}
+                      className={cn(
+                        'transition-all',
+                        tx.isPaid && 'bg-muted/30 opacity-60 grayscale-[0.5]',
+                      )}
+                    >
+                      <TableCell>
+                        <Checkbox
+                          checked={tx.isPaid || false}
+                          onCheckedChange={() => toggleTransactionPaid(tx.id, tx.date)}
+                          aria-label={`Marcar ${tx.description} como pago`}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-col gap-1">
+                          <div className="flex items-center gap-2">
+                            <span
+                              className={cn(
+                                'font-medium',
+                                tx.isPaid ? 'line-through text-muted-foreground' : 'text-slate-900',
+                              )}
+                            >
+                              {tx.description}
+                            </span>
+                            {tx.isRecurrent && (
+                              <Repeat
+                                className="w-3 h-3 text-purple-600 shrink-0"
+                                aria-label="Recorrente"
+                              />
+                            )}
+                            {tx.installment && (
+                              <span className="text-[10px] font-medium text-blue-700 bg-blue-50 px-1 py-0.5 rounded-sm border border-blue-100 leading-none whitespace-nowrap">
+                                {tx.installment.current}/{tx.installment.total}
+                              </span>
+                            )}
+                          </div>
+                          <div className="sm:hidden text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                            <span>{tx.category}</span>
+                            <span>&bull;</span>
+                            <span>{formatDate(tx.date)}</span>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="hidden sm:table-cell text-muted-foreground">
+                        {tx.category}
+                      </TableCell>
+                      <TableCell className="hidden sm:table-cell text-muted-foreground">
+                        {formatDate(tx.date)}
+                      </TableCell>
+                      <TableCell
+                        className={cn(
+                          'text-right font-medium align-top sm:align-middle pt-5 sm:pt-4',
+                          tx.type === 'income' ? 'text-success' : 'text-destructive',
+                          tx.isPaid && 'opacity-70',
+                        )}
+                      >
+                        {tx.type === 'income' ? '+' : '-'}
+                        {formatCurrency(tx.amount)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            ) : (
+              <div className="p-8 text-center text-muted-foreground">
+                <p>Nenhuma transação encontrada para este mês.</p>
+              </div>
+            )}
+          </CardContent>
         </Card>
       </div>
     </div>
